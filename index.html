@@ -253,7 +253,7 @@ Let $B_N$ contain all neighbors of $I_N$ that are not in $I_N$. A walk stops as 
 $$4U(z)-\sum_{w\sim z,\,w\in I_N}U(w)
 =\sum_{w\sim z,\,w\in B_N}g_N(w),\qquad A\mathbf U=\mathbf b.$$
 The diagonal entries of $A$ are 4 and interior neighbor entries are $-1$. Each row has at most five nonzero entries. The number of unknowns satisfies
-$$|I_N|\sim\frac{|D|}{h^2}=\frac{pi(R^2-r^2)}{R^2}N^2.$$</p>
+$$|I_N|\sim\frac{|D|}{h^2}=\frac{\pi(R^2-r^2)}{R^2}N^2.$$</p>
 <p>To prove uniqueness, take a solution of the homogeneous system with zero boundary data. A positive interior maximum, being equal to the average of its neighbors, forces every neighbor to have the same maximum. Propagating along a path to the boundary gives a contradiction. Applying the argument to the negative rules out a negative minimum. Thus the nullspace is trivial and $A$ is invertible. This argument requires every interior component to reach the boundary, which holds for our finite grid.</p>
 <h3>3. Probabilistic representation</h3>
 <p>Consider the path space $\mathcal W_N=(I_N\cup B_N)^{\mathbb N_0}$, in each $I_N\cup B_N$ we consider the sigma algebra $\mathscr P (I_N\cup B_N)$ and $ \mathcal W_N$ is equipped with its product sigma-algebra. Under $\mathbb P_z$, the coordinate process $X_n(\omega)=\omega_n$ starts at <strong>$X_0=z$</strong>, moves to each of its four neighbors with probability $1/4$ in $I_N$, and stays fixed once it reaches $B_N$. Define
