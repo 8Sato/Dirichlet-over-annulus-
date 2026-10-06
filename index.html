@@ -39,6 +39,23 @@
       define its boundary values, and explore the solution in three dimensions.</p>
   </header>
 
+  <section class="problem" aria-labelledby="problem-title">
+    <div class="box">
+      <h2 id="problem-title">The problem</h2>
+      <p>This page approximates the solution of the Dirichlet problem for Laplace's equation
+        on an annulus. Given radii 0 &lt; r &lt; R and two functions f, g of the angle θ,
+        it finds the function u satisfying</p>
+      $$\begin{cases}
+        \Delta u = 0 &amp; \text{in } r &lt; |\mathbf{x}| &lt; R,\\[6pt]
+        u(\mathbf{x}) = f(\theta) &amp; \text{on } |\mathbf{x}| = r,\\[6pt]
+        u(\mathbf{x}) = g(\theta) &amp; \text{on } |\mathbf{x}| = R,
+      \end{cases}$$
+      <p>where $\mathbf{x}=(x,y)$, $|\mathbf{x}|=\sqrt{x^2+y^2}$, θ is the polar angle of $\mathbf{x}$
+        and Δu = u<sub>xx</sub> + u<sub>yy</sub>. It is solved with random walks (Monte Carlo)
+        and compared with the exact Fourier solution.</p>
+    </div>
+  </section>
+
   <main class="workspace">
     <section class="panel controls" aria-labelledby="parameters-title">
       <h2 id="parameters-title">Simulation parameters</h2>
