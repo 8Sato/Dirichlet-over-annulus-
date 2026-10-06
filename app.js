@@ -78,7 +78,7 @@
       scene: {
         bgcolor: clear,
         xaxis: { ...axis, title: { text: 'x' } }, yaxis: { ...axis, title: { text: 'y' } }, zaxis: { ...axis, title: { text: 'u' } },
-        aspectmode: 'manual', aspectratio: { x: 1, y: 1, z: 0.7 }, dragmode: 'orbit',
+        aspectmode: 'manual', aspectratio: { x: 1, y: 1, z: 0.7 }, dragmode: 'turntable',
       },
       uirevision: 'keep',
     }, config);
@@ -151,7 +151,7 @@
       scene: {
         bgcolor: clear,
         xaxis: { ...axis, title: { text: 'x' } }, yaxis: { ...axis, title: { text: 'y' } }, zaxis: { ...axis, title: { text: 'u' } },
-        aspectmode: 'manual', aspectratio: { x: 1, y: 1, z: 0.7 }, dragmode: 'orbit',
+        aspectmode: 'manual', aspectratio: { x: 1, y: 1, z: 0.7 }, dragmode: 'turntable',
       },
       uirevision: 'keep',
     }, config);
