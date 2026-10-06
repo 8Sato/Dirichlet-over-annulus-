@@ -125,6 +125,40 @@
       </dl>
     </section>
 
+    <section class="panel analytic" aria-labelledby="analytic-title">
+      <h2 id="analytic-title">Analytic solution and error</h2>
+      <p>Separation of variables in polar coordinates gives the exact solution as a
+        Fourier series in θ. Let L = ln(R/r<sub>in</sub>) and s = ln(ρ/r<sub>in</sub>) for a point at
+        radius ρ, and let f<sub>n</sub>(θ), g<sub>n</sub>(θ) be the cos&nbsp;nθ and sin&nbsp;nθ
+        components of f and g. Then</p>
+      $$u(\rho,\theta)=f_0\,\frac{L-s}{L}+g_0\,\frac{s}{L}
+        +\sum_{n\ge1}\frac{f_n(\theta)\sinh n(L-s)+g_n(\theta)\sinh ns}{\sinh nL}.$$
+      <p>The page computes the coefficients with the trapezoidal rule (512 samples) and keeps
+        the modes that are numerically nonzero (at most 128). The error is
+        Û − u at every continuation node. If the RMSE is much larger than the standard error,
+        discretization dominates: refine N rather than M. The map also shows the prescribed
+        absorbing layer, whose mismatch with the true boundary is part of that discretization error.</p>
+      <figure>
+        <div id="exact-plot" aria-label="Analytic surface and Monte Carlo estimates">
+          <p>The analytic surface and the Monte Carlo points will appear here after a simulation.</p>
+        </div>
+        <figcaption>Analytic surface (orange) and Monte Carlo estimates (points).</figcaption>
+      </figure>
+      <figure>
+        <div id="error-plot" aria-label="Signed error map">
+          <p>The error map will appear here.</p>
+        </div>
+        <figcaption>Signed error Û − u. Red: overestimate · Blue: underestimate.</figcaption>
+      </figure>
+      <dl class="simulation-summary" id="error-summary" hidden>
+        <dt>RMSE (continuation nodes)</dt><dd id="err-rmse">—</dd>
+        <dt>Mean error (bias)</dt><dd id="err-mean">—</dd>
+        <dt>Max |error|</dt><dd id="err-max">—</dd>
+        <dt>Mean standard error</dt><dd id="err-se">—</dd>
+        <dt>Fourier modes used</dt><dd id="err-modes">—</dd>
+      </dl>
+    </section>
+
     <section class="panel explanation" aria-labelledby="method-title">
       <h2 id="method-title">The mathematics</h2>
       <p>We seek a function u satisfying Δu = 0 on the annulus

@@ -140,6 +140,52 @@
     return next;
   }
 
+  /* ---------- Solución analítica: serie de Fourier en theta ----------
+     u(r,θ) = f0 (L-s)/L + g0 s/L + Σ_n [ f_n(θ) sinh(n(L-s)) + g_n(θ) sinh(n s) ] / sinh(nL),
+     con L = ln(b/a), s = ln(r/a). Los cocientes se escriben con exp/expm1 para evitar desbordes. */
+  const FOURIER_SAMPLES = 512, FOURIER_MAX = 128;
+
+  function fourier(fn) {
+    const K = FOURIER_SAMPLES, vals = new Float64Array(K);
+    let c0 = 0, scale = 0;
+    for (let k = 0; k < K; k++) {
+      vals[k] = fn((TWO_PI * k) / K);
+      c0 += vals[k]; scale = Math.max(scale, Math.abs(vals[k]));
+    }
+    c0 /= K;
+    const tol = 1e-12 * (scale || 1);
+    const c = new Float64Array(FOURIER_MAX + 1), s = new Float64Array(FOURIER_MAX + 1);
+    let last = 0;
+    for (let n = 1; n <= FOURIER_MAX; n++) {
+      let sc = 0, ss = 0;
+      for (let k = 0; k < K; k++) {
+        const t = (TWO_PI * n * k) / K;
+        sc += vals[k] * Math.cos(t); ss += vals[k] * Math.sin(t);
+      }
+      c[n] = (2 * sc) / K; s[n] = (2 * ss) / K;
+      if (Math.abs(c[n]) > tol || Math.abs(s[n]) > tol) last = n;
+    }
+    return { c0, c, s, last };
+  }
+
+  function makeAnalytic(f, g, a, b) {
+    const L = Math.log(b / a), F = fourier(f), G = fourier(g);
+    const modes = Math.max(F.last, G.last);
+    const at = (x, y) => {
+      const r = Math.hypot(x, y), th = Math.atan2(y, x), s = Math.log(r / a);
+      let u = (F.c0 * (L - s) + G.c0 * s) / L;
+      for (let n = 1; n <= modes; n++) {
+        const den = -Math.expm1(-2 * n * L);
+        const wf = (Math.exp(-n * s) * -Math.expm1(-2 * n * (L - s))) / den;   // sinh(n(L-s))/sinh(nL)
+        const wg = (Math.exp(-n * (L - s)) * -Math.expm1(-2 * n * s)) / den;   // sinh(n s)/sinh(nL)
+        const cs = Math.cos(n * th), sn = Math.sin(n * th);
+        u += wf * (F.c[n] * cs + F.s[n] * sn) + wg * (G.c[n] * cs + G.s[n] * sn);
+      }
+      return u;
+    };
+    return { at, modes };
+  }
+
   /* ---------- Simulación ---------- */
   function abortError() {
     const e = new Error('Simulation cancelled.');
@@ -233,12 +279,28 @@
       }
     }
 
+    // Solución analítica y error (Û - u) en cada nodo del anillo; métricas sólo en nodos de continuación.
+    const analytic = makeAnalytic(f, g, a, b);
+    const exact = new Float64Array(n1 * n1).fill(NaN), err = new Float64Array(n1 * n1).fill(NaN);
+    let eSum = 0, eSq = 0, eMax = 0, errLimit = 0;
+    for (let i = 0; i < n1; i++) {
+      for (let j = 0; j < n1; j++) {
+        const p = i * n1 + j;
+        if (!inAnnulus[p]) continue;
+        const u = analytic.at(xs[i], xs[j]), e = z[p] - u;
+        exact[p] = u; err[p] = e;
+        if (Math.abs(e) > errLimit) errLimit = Math.abs(e);
+        if (se[p] === se[p]) { eSum += e; eSq += e * e; if (Math.abs(e) > eMax) eMax = Math.abs(e); }
+      }
+    }
+    const errStats = { mean: eSum / K, rmse: Math.sqrt(eSq / K), maxAbs: eMax };
+
     let zmin = Infinity, zmax = -Infinity;
     for (let p = 0; p < z.length; p++) {
       if (z[p] === z[p]) { if (z[p] < zmin) zmin = z[p]; if (z[p] > zmax) zmax = z[p]; }
     }
     if (onProgress) onProgress(1);
-    return { a, b, N, M, h, xs, z, se, nodeCount: K, zmin, zmax, meanSE: sumSE / K, maxSE, f, g, elapsedMs: performance.now() - t0 };
+    return { a, b, N, M, h, xs, z, se, nodeCount: K, zmin, zmax, meanSE: sumSE / K, maxSE, f, g, analytic, exact, err, errLimit, errStats, elapsedMs: performance.now() - t0 };
   }
 
   global.AnnulusSimulation = { parseFunction, compileBoundary, run };

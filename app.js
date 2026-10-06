@@ -106,6 +106,82 @@
       yaxis: { ...axis, title: { text: 'y' }, range: [-pad, pad], scaleanchor: 'x' },
       shapes: [circle(a), circle(b)],
     }, config);
+    drawAnalytic(res);
+  }
+
+  function drawAnalytic(res) {
+    const { z, se, xs, a, b, N } = res, n1 = N + 1;
+    const dark = root.getAttribute('data-theme') === 'dark';
+    const ink = cssVar('--ink'), grid = cssVar('--line'), clear = 'rgba(0,0,0,0)';
+    const axis = { color: ink, gridcolor: grid, zerolinecolor: grid, linecolor: grid };
+
+    // Superficie exacta en malla polar + estimaciones Monte Carlo.
+    const nr = 50, nt = 140, X = [], Y = [], Z = [];
+    for (let k = 0; k < nt; k++) {
+      const th = (2 * Math.PI * k) / (nt - 1), rx = [], ry = [], rz = [];
+      for (let m = 0; m < nr; m++) {
+        const r = a + ((b - a) * m) / (nr - 1), x = r * Math.cos(th), y = r * Math.sin(th);
+        rx.push(x); ry.push(y); rz.push(res.analytic.at(x, y));
+      }
+      X.push(rx); Y.push(ry); Z.push(rz);
+    }
+    const surface = {
+      type: 'surface', x: X, y: Y, z: Z, surfacecolor: Z.map((row) => row.map(() => 0)),
+      colorscale: [[0, '#e8833a'], [1, '#e8833a']], showscale: false, opacity: 0.55,
+      name: 'Analytic solution', showlegend: true,
+      hovertemplate: 'x: %{x:.3f}<br>y: %{y:.3f}<br>u = %{z:.4f}<extra>analytic</extra>',
+    };
+    const px = [], py = [], pz = [];
+    for (let i = 0; i < n1; i++) {
+      for (let j = 0; j < n1; j++) {
+        const p = i * n1 + j;
+        if (!Number.isNaN(se[p])) { px.push(xs[i]); py.push(xs[j]); pz.push(z[p]); }
+      }
+    }
+    const points = {
+      type: 'scatter3d', mode: 'markers', x: px, y: py, z: pz, name: 'Monte Carlo estimates',
+      marker: { size: 2.5, color: dark ? '#6ea8ff' : '#2f5fd0' },
+      hovertemplate: 'x: %{x:.3f}<br>y: %{y:.3f}<br>u ≈ %{z:.4f}<extra>Monte Carlo</extra>',
+    };
+    const el3d = $('exact-plot');
+    clearPlaceholder(el3d);
+    Plotly.react(el3d, [surface, points], {
+      margin: { l: 0, r: 0, t: 10, b: 0 }, paper_bgcolor: clear, font: { color: ink },
+      legend: { orientation: 'h', y: 0 },
+      scene: {
+        bgcolor: clear,
+        xaxis: { ...axis, title: { text: 'x' } }, yaxis: { ...axis, title: { text: 'y' } }, zaxis: { ...axis, title: { text: 'u' } },
+        aspectmode: 'manual', aspectratio: { x: 1, y: 1, z: 0.7 }, dragmode: 'orbit',
+      },
+      uirevision: 'keep',
+    }, config);
+
+    // Mapa del error con signo (escala simétrica alrededor de 0).
+    const eRows = rowsOf(res, (p) => (Number.isNaN(res.err[p]) ? null : res.err[p]));
+    const lim = res.errLimit || 1e-12;
+    const hover = rowsOf(res, (p, i, j) => {
+      if (Number.isNaN(res.err[p])) return '';
+      const where = `x = ${xs[i].toFixed(3)}, y = ${xs[j].toFixed(3)}`;
+      return Number.isNaN(se[p])
+        ? `${where}<br>error = ${res.err[p].toFixed(4)} (prescribed layer)`
+        : `${where}<br>error = ${res.err[p].toFixed(4)} (1 SE = ${se[p].toFixed(4)})`;
+    });
+    const heat = {
+      type: 'heatmap', x: Array.from(xs), y: Array.from(xs), z: eRows, zmin: -lim, zmax: lim,
+      colorscale: 'RdBu', reversescale: true, zsmooth: false, text: hover, hovertemplate: '%{text}<extra></extra>',
+      colorbar: { title: { text: 'Û − u' }, thickness: 14 },
+    };
+    const circle = (r) => ({ type: 'circle', xref: 'x', yref: 'y', x0: -r, y0: -r, x1: r, y1: r, line: { color: ink, width: 1.5 } });
+    const elErr = $('error-plot');
+    clearPlaceholder(elErr);
+    const pad = b * 1.03;
+    Plotly.react(elErr, [heat], {
+      margin: { l: 50, r: 10, t: 10, b: 45 },
+      paper_bgcolor: clear, plot_bgcolor: clear, font: { color: ink },
+      xaxis: { ...axis, title: { text: 'x' }, range: [-pad, pad], constrain: 'domain' },
+      yaxis: { ...axis, title: { text: 'y' }, range: [-pad, pad], scaleanchor: 'x' },
+      shapes: [circle(a), circle(b)],
+    }, config);
   }
 
   function showSummary(res) {
@@ -116,6 +192,13 @@
     set('result-time', `${(res.elapsedMs / 1000).toFixed(2)} s`);
     set('result-se', `${res.meanSE.toFixed(4)} / ${res.maxSE.toFixed(4)}`);
     $('simulation-summary').hidden = false;
+    const sgn = (v) => (v >= 0 ? '+' : '') + v.toFixed(4);
+    set('err-rmse', res.errStats.rmse.toFixed(4));
+    set('err-mean', sgn(res.errStats.mean));
+    set('err-max', res.errStats.maxAbs.toFixed(4));
+    set('err-se', res.meanSE.toFixed(4));
+    set('err-modes', String(res.analytic.modes));
+    $('error-summary').hidden = false;
   }
 
   form.addEventListener('submit', async (event) => {
