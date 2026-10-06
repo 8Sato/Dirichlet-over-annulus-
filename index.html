@@ -6,6 +6,14 @@
   <meta name="description" content="Explore the Dirichlet problem on an annulus using Monte Carlo random walks.">
   <title>Laboratorio de Chiqui Tapia — Monte Carlo &amp; Laplace's equation</title>
   <link rel="stylesheet" href="./styles.css">
+  <!-- Fórmulas: MathJax (delimitadores $...$ y $$...$$) -->
+  <script>
+    window.MathJax = {
+      tex: { inlineMath: [['$', '$']], displayMath: [['$$', '$$']] },
+      options: { skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code'] }
+    };
+  </script>
+  <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js" defer></script>
   <!-- Orden importante: Plotly, luego simulation.js, luego app.js. -->
   <script src="https://cdn.plot.ly/plotly-2.35.2.min.js" defer></script>
   <script src="./simulation.js" defer></script>
@@ -126,6 +134,213 @@
         decreases like 1 / √M at nodes with nonzero payoff variance.
         Discretization error comes from the grid and its approximate boundary;
         increasing M alone does not remove it.</p>
+      <div class="derivations">
+<p><strong>Scope.</strong> The derivations below are written for the benchmark annulus $1&lt;r&lt;3$ with constant boundary values $f\equiv4$ on $r=1$ and $g\equiv6$ on $r=3$. Its exact solution is $u(x,y)=4+2\log r/\log 3$, so $u(2,0)\approx5.2619$ is the reference value, and $h=6/N$. The simulator above uses a general annulus $a&lt;r&lt;b$: replace $1$, $3$ and $6$ by $a$, $b$ and $2b$ in the geometry, and the values $4$ and $6$ by $f$ and $g$ evaluated at the projected angle. The representation $U^{(N)}(z)=\mathbb E_z[g_N(X_{\tau_N})]$, the discrete maximum principle, the unbiasedness of the estimator and the error decomposition hold unchanged. The Bernoulli variance formula $\sigma_N^2=(U_N-4)(6-U_N)$ is specific to the two-valued case; in general $\sigma_N^2$ is estimated by the sample variance, which is what the standard error reported by the app uses. Sections 7 and 8 describe the experiments of the accompanying notebook, so the plots and printed metrics they mention are not reproduced on this page.</p>
+<h3>1. Notation</h3>
+<table>
+<thead>
+<tr>
+<th>Symbol</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>$N$, $h=6/N$</td>
+<td>Number of grid intervals per axis and grid spacing</td>
+</tr>
+<tr>
+<td>$I_N$, $B_N$</td>
+<td>Continuation nodes and accessible absorbing nodes</td>
+</tr>
+<tr>
+<td>$g_N$</td>
+<td>Discrete boundary data, taking values 4 and 6</td>
+</tr>
+<tr>
+<td>$U^{(N)}(z)$</td>
+<td>Discrete solution at any node $z$</td>
+</tr>
+<tr>
+<td>$U_N=U^{(N)}(z_N)$</td>
+<td>Discrete value at the starting node nearest to $(2,0)$</td>
+</tr>
+<tr>
+<td>$\widehat U_{N,M}$</td>
+<td>Estimate based on $M$ walks on the grid of resolution $N$</td>
+</tr>
+</tbody>
+</table>
+<p>We use $D$ for the physical domain and $\mathcal W_N$ for the sample space of trajectories. All resolutions in the experiments are multiples of 6, so $z_N=(2,0)$ exactly in the mathematical grid.</p>
+<h3>2. Discretization of the problem</h3>
+<p>Fix $h=6/N$ and $(x_i,y_j)=(-3+ih,-3+jh)$ for $0\le i,j\le N$. If $u$ has bounded fourth derivatives in a neighborhood of the stencil, Taylor's theorem gives
+$$u(x\pm h,y)=u\pm hu_x+\frac{h^2}{2}u_{xx}\pm\frac{h^3}{6}u_{xxx}+O(h^4).$$
+Adding the two expansions cancels the odd terms. Doing the same in $y$ yields
+$$\Delta_h u(z):=\frac{\sum_{w\sim z}u(w)-4u(z)}{h^2}
+=\Delta u(z)+O(h^2),$$
+where $w\sim z$ denotes one of the four nearest neighbors. Therefore $\Delta_h U=0$ is equivalent to the discrete mean-value property
+$$U(z)=\frac14\sum_{w\sim z}U(w).$$
+This is a discrete analogue of the mean-value property of harmonic functions.</p>
+<h4>The boundary used by the algorithm</h4>
+<p>Let $G_N$ be the grid in $[-3,3]^2$. Define
+$$I_N=\{z\in G_N\cap D:z\pm he_1,z\pm he_2\in D\}.$$
+Let $B_N$ contain all neighbors of $I_N$ that are not in $I_N$. A walk stops as soon as it reaches $B_N$. The implementation also labels other grid nodes for convenience, but unreachable labels do not affect a walk started in $I_N$.</p>
+<p>We prescribe $g_N=4$ or 6 on these absorbing nodes according to the nearest circle. Thus we approximate both the operator and the location where the boundary data are imposed. Second-order consistency of the interior stencil alone does not imply second-order global accuracy.</p>
+<h4>Linear system and uniqueness</h4>
+<p>Numbering the nodes in $I_N$ gives
+$$4U(z)-\sum_{w\sim z,\,w\in I_N}U(w)
+=\sum_{w\sim z,\,w\in B_N}g_N(w),\qquad A\mathbf U=\mathbf b.$$
+The diagonal entries of $A$ are 4 and interior neighbor entries are $-1$. Each row has at most five nonzero entries. The number of unknowns satisfies
+$$|I_N|\sim\frac{|D|}{h^2}=\frac{8\pi}{h^2}=\frac{2\pi}{9}N^2.$$</p>
+<p>To prove uniqueness, take a solution of the homogeneous system with zero boundary data. A positive interior maximum, being equal to the average of its neighbors, forces every neighbor to have the same maximum. Propagating along a path to the boundary gives a contradiction. Applying the argument to the negative rules out a negative minimum. Thus the nullspace is trivial and $A$ is invertible. This argument requires every interior component to reach the boundary, which holds for our finite grid.</p>
+<h3>3. Probabilistic representation</h3>
+<p>Consider the path space $\mathcal W_N=(I_N\cup B_N)^{\mathbb N_0}$, in each $I_N\cup B_N$ we consider the sigma algebra $\mathscr P (I_N\cup B_N)$ and $ \mathcal W_N$ is equipped with its product sigma-algebra. Under $\mathbb P_z$, the coordinate process $X_n(\omega)=\omega_n$ starts at <strong>$X_0=z$</strong>, moves to each of its four neighbors with probability $1/4$ in $I_N$, and stays fixed once it reaches $B_N$. Define
+$$\tau_N(\omega)=\inf\{n\ge0:X_n(\omega)\in B_N\},\qquad
+Y(\omega)=g_N\bigl(X_{\tau_N(\omega)}(\omega)\bigr).$$
+The notation $\mathbb E_z$ means expectation with respect to $\mathbb P_z$. The random variable is $Y$, a real-valued function of an entire trajectory; fixing a trajectory fixes a realization $Y(\omega)$, not the random variable itself.</p>
+<h4>Absorption occurs almost surely</h4>
+<p>Finiteness and accessibility of the boundary imply that there are $L&lt;\infty$ and $q&gt;0$ such that every continuation node has probability at least $q$ of reaching $B_N$ within $L$ steps. For example, choose a path to the boundary from every node, let $L$ be their maximum length, and take $q=4^{-L}$. The Markov property gives
+$$\mathbb P_z(\tau_N&gt;kL)\le(1-q)^k.$$
+Consequently $\tau_N&lt;\infty$ almost surely and $\mathbb E_z[\tau_N]&lt;\infty$. For formal completeness, define $Y=4$ on the null event $\{\tau_N=\infty\}$; this choice does not change its expectation. Since $Y\in\{4,6\}$, its expectation is well defined. A walk may revisit nodes and backtrack.</p>
+<p>Since the set of continuation nodes $I_N$ is finite and the absorbing
+boundary $B_N$ is accessible from every node, there exist an integer
+$L \geq 1$ and a constant $q&gt;0$ such that
+$$
+\mathbb P_x(\tau_N \leq L) \geq q
+\qquad \text{for every } x\in I_N.
+$$
+Indeed, choose a path from each continuation node to the boundary,
+let $L$ be the maximum of their lengths, and take $q=4^{-L}$.
+Following the chosen path from any node has probability at least $q$.</p>
+<p>We now show that
+$$
+\mathbb P_z(\tau_N&gt;kL)\leq(1-q)^k,
+\qquad k=0,1,2,\ldots.
+$$
+On the event $\{\tau_N&gt;kL\}$, the walk is still at a continuation
+node at time $kL$. By the Markov property and time homogeneity,
+conditional on $X_{kL}=x$, its future evolution has the same law
+as a walk started at $x$. Therefore,
+$$
+\begin{aligned}
+\mathbb P_z(\tau_N&gt;(k+1)L)
+&amp;=\sum_{x\in I_N}
+  \mathbb P_z(\tau_N&gt;kL,\ X_{kL}=x)\,
+  \mathbb P_x(\tau_N&gt;L)\\
+&amp;\leq(1-q)\sum_{x\in I_N}
+  \mathbb P_z(\tau_N&gt;kL,\ X_{kL}=x)\\
+&amp;=(1-q)\mathbb P_z(\tau_N&gt;kL).
+\end{aligned}
+$$
+Iterating this inequality proves the desired bound.</p>
+<p>Intuitively, after each block of $L$ steps without absorption,
+the walk still has probability at least $q$ of reaching the
+boundary during the next block, regardless of its current position.
+The blocks need not be independent.</p>
+<p>In particular, continuity of probability for decreasing events gives
+$$
+\mathbb P_z(\tau_N=\infty)
+=\lim_{k\to\infty}\mathbb P_z(\tau_N&gt;kL)=0.
+$$
+Moreover, the tail sum formula yields
+$$
+\begin{aligned}
+\mathbb E_z[\tau_N]
+&amp;=\sum_{n=0}^{\infty}\mathbb P_z(\tau_N&gt;n)\\
+&amp;\leq L\sum_{k=0}^{\infty}\mathbb P_z(\tau_N&gt;kL)\\
+&amp;\leq L\sum_{k=0}^{\infty}(1-q)^k
+=\frac{L}{q}&lt;\infty.
+\end{aligned}
+$$
+Thus absorption occurs almost surely and the expected absorption
+time is finite.</p>
+<h4>Representation theorem</h4>
+<p>The function
+$$\boxed{U^{(N)}(z)=\mathbb E_z[g_N(X_{\tau_N})]}$$
+is the unique solution of the discrete Dirichlet problem in Section 2.</p>
+<p><strong>Proof.</strong> At an absorbing node, $\tau_N=0$, so $U^{(N)}=g_N$. At a continuation node, condition on the first jump. The Markov property implies
+$$U^{(N)}(z)=\sum_{w\sim z}\frac14\mathbb E_w[g_N(X_{\tau_N})]
+=\frac14\sum_{w\sim z}U^{(N)}(w).$$
+Existence follows from this construction; uniqueness follows from the discrete maximum principle proved above. In particular, $4\le U^{(N)}\le6$.</p>
+<p><strong>Interpretation.</strong> The exit distribution weights the boundary values:
+$$U^{(N)}(z)=\sum_{b\in B_N}g_N(b)\mathbb P_z(X_{\tau_N}=b).$$
+This distribution is the discrete harmonic measure. If $p_N(z)$ is the probability of absorption at a node assigned the outer value 6, then
+$$\boxed{U^{(N)}(z)=4(1-p_N(z))+6p_N(z)=4+2p_N(z).}$$
+The expectation solves the discrete problem exactly; relating it to the continuous solution requires controlling the discretization error.</p>
+<p>For more details, see Section 9.2 of D. A. Levin and Y. Peres, <em>Markov Chains and Mixing Times</em>, 2nd ed., American Mathematical Society, 2017.</p>
+<h3>4. Monte Carlo estimation and error decomposition</h3>
+<p>For a fixed grid and starting node $z_N$, generate $m$ independent walks $X^{(i)}$ for $i=1,...,m$. Each has its own absorption time $\tau_N^{(m)}$. Define
+$$Y_m=g_N\bigl(X_{\tau_N^{(m)}}^{(m)}\bigr),\qquad
+\widehat U_{N,M}=\frac1M\sum_{m=1}^M Y_m.$$
+Then $\mathbb E[\widehat U_{N,M}]=U_N$: the estimator is unbiased for the <strong>discrete</strong> value. Since $Y_m$ are bounded and i.i.d., the strong law gives $\widehat U_{N,M}\to U_N$ almost everywhere (in other words $\mathbb P (\widehat U_{N,M}\to U_N)=1$) as $M\to\infty$ with $N$ fixed.</p>
+<h4>Variance, MSE, and RMSE</h4>
+<p>Write $Y=4+2B$ with $B\sim\operatorname{Ber}(p_N)$ and $p_N=(U_N-4)/2$. Then
+$$\sigma_N^2=\operatorname{Var}(Y)=4p_N(1-p_N)=(U_N-4)(6-U_N)\le1.$$
+Independence gives
+$$\operatorname{MSE}_{\mathrm{MC}}=\mathbb E[(\widehat U_{N,M}-U_N)^2]=\frac{\sigma_N^2}{M},\qquad
+\boxed{\operatorname{RMSE}_{\mathrm{MC}}=\frac{\sigma_N}{\sqrt M}.}$$
+MSE is a mean <strong>squared</strong> error; RMSE is its square root and has the same units as $u$. Near $U_N=5.26$, $\sigma_N\approx0.97$.</p>
+<p>When $\sigma_N&gt;0$, the central limit theorem yields
+$$\frac{\sqrt M(\widehat U_{N,M}-U_N)}{\sigma_N}\longrightarrow \sim \mathcal N(0,1).$$
+An <strong>approximate</strong>, large-sample 95% confidence interval for $U_N$ is $\widehat U_{N,M}\pm1.96s/\sqrt M$, where $s$ is the sample standard deviation of the individual outcomes. It does not automatically cover the continuous value $u(2,0)$: discretization bias is not included. Neither an error standard deviation nor a confidence interval is a deterministic bound on a realized error.</p>
+<h4>Total error</h4>
+<p>Let $b_N=U_N-u(2,0)$ and $\varepsilon_{N,M}=\widehat U_{N,M}-U_N$. Then
+$$\widehat U_{N,M}-u(2,0)=\varepsilon_{N,M}+b_N,$$
+and, because $\mathbb E[\varepsilon_{N,M}]=0$,
+$$\boxed{\mathbb E[(\widehat U_{N,M}-u(2,0))^2]=\frac{\sigma_N^2}{M}+b_N^2.}$$
+The cross term vanishes by zero mean; no assertion of independence between two random errors is needed, since $b_N$ is deterministic. Signed errors add exactly, while absolute errors may partially cancel.</p>
+<p>At fixed $N$, the observed total absolute error converges almost surely to $|b_N|$. Refining $N$ at fixed $M$ leaves a statistical uncertainty scale of order $M^{-1/2}$; it does not force any individual error curve to plateau monotonically. We will therefore examine the two components separately.</p>
+<h3>5. Transitions and node classification</h3>
+<p>A step changes one grid index by $\pm1$ in one of four directions, each chosen with probability $1/4$. A change of one index corresponds to a physical displacement of length $h$.</p>
+<p>The node classification follows this rule:</p>
+<ol>
+<li>Assign 4 when $r\le1$, and 6 when $r\ge3$.</li>
+<li>For $1&lt;r&lt;3$, stop if any nearest neighbor has radius $\le1$ or $\ge3$. Assign the nearest circle's value: 4 if $r-1\le3-r$, otherwise 6.</li>
+<li>Treat all remaining nodes as continuation nodes, meaning that the walk continues.</li>
+</ol>
+<p>The physically accessible absorbing layer lies inside the annulus, within distance <strong>at most</strong> $h$ of a circle. Auxiliary labels outside the annulus are convenient for storage, but are not values of the PDE solution outside its domain.</p>
+<h4>Why a first-order error bound is appropriate here</h4>
+<p>The continuous solution is smooth on a neighborhood of the closed annulus. On accessible absorbing nodes, the boundary mismatch satisfies
+$$|g_N(z)-u(z)|\le C_bh,$$
+because $|\nabla u|$ is bounded and the nearest true boundary is at distance at most $h$. At continuation nodes, the local mean-value defect
+$$\delta_h(z)=\frac14\sum_{w\sim z}u(w)-u(z)=\frac{h^2}{4}\Delta_hu(z)$$
+satisfies $|\delta_h(z)|\le C_ih^4$ uniformly for sufficiently small $h$.</p>
+<p>The stopped-walk identity proved in Section 6 bounds $\mathbb E_z[\tau_N]\le9/h^2$, since all accessible states have radius at most 3. Telescoping conditional expectations up to absorption therefore gives
+$$U^{(N)}(z)-u(z)=\mathbb E_z[g_N(X_{\tau_N})-u(X_{\tau_N})]
++\mathbb E_z\!\left[\sum_{k&lt;\tau_N}\delta_h(X_k)\right],$$
+and consequently
+$$\boxed{\sup_{z\in I_N}|U^{(N)}(z)-u(z)|\le C_bh+9C_ih^2=O(h).}$$
+Passing from bounded stopping times to $\tau_N$ is justified by bounded positions, bounded defects, and finite expected absorption time. This is an <strong>upper bound</strong>, not a claim that the error is asymptotically equal to a nonzero constant times $h$.</p>
+<p><strong>Intuition.</strong> Boundary nodes assigned 4 lie slightly outside the true inner circle and therefore underestimate the exact local value; nodes assigned 6 near the outer circle overestimate it. These contributions can partially cancel at the target. Their geometry changes irregularly with $N$, so monotonic decay is not guaranteed. The argument concerns the ideal grid in exact arithmetic; the implementation also has floating-point roundoff near radius comparisons.</p>
+<h3>6. One walk and the first estimate</h3>
+<p>A walk classifies the current node, stops with its boundary value if the node is absorbing, and otherwise picks one of the four directions uniformly at random and moves. The random number generator is seeded once; reseeding it for every walk would repeat trajectories instead of producing new samples.</p>
+<h4>Expected number of steps</h4>
+<p>At a continuation node $z$, symmetry of the four increments implies
+$$\mathbb E[|X_{k+1}|^2-|X_k|^2\mid X_k=z]=h^2.$$
+Thus $|X_{n\wedge\tau_N}|^2-h^2(n\wedge\tau_N)$ is a martingale. Taking expectations for finite $n$, then using bounded convergence for positions and monotone convergence for the stopping times, yields
+$$\boxed{\mathbb E_z[\tau_N]=\frac{\mathbb E_z|X_{\tau_N}|^2-|z|^2}{h^2}.}$$
+This also gives a uniform $O(h^{-2})$ upper bound. For the target $(2,0)$, replacing exit radii by 1 and 3 gives the fine-grid approximation
+$$\mathbb E[\tau_N]\approx\frac{1+8p_N-4}{h^2}.$$
+As the grid is refined, $p_N\to\log2/\log3\approx0.631$, so the leading scale is about $2.05/h^2\approx0.057N^2$. These are asymptotic estimates, not measured step counts; the current simulation does not record path lengths.</p>
+<p><strong>Intuition.</strong> For an unbiased walk, a typical displacement after $k$ steps is of order $h\sqrt{k}$. Traversing a fixed physical distance therefore takes order $h^{-2}$ steps.</p>
+<h3>7. Repeated Monte Carlo experiments</h3>
+<p>For fixed $N=96$, perform $R=12$ repetitions. Each uses a new collection of walks and cumulative means for $M$ between $10^3$ and $2\cdot10^5$. Estimate
+$$\widehat{\operatorname{RMSE}}(M)=\sqrt{\frac1R\sum_{r=1}^R(\widehat U_{N,M}^{(r)}-U_N)^2}.$$
+The average inside the square root is unbiased for MSE. Its square root is generally <strong>not</strong> unbiased for RMSE, but converges to it as $R\to\infty$. The empirical curve remains random for finite $R$.</p>
+<p>If the replicate errors are approximately independent centered Gaussian variables, the delta method gives an approximate relative standard deviation $1/\sqrt{2R}$ for empirical RMSE. For $R=12$ this is about 20%; it is a heuristic uncertainty scale, not an exact guarantee. At different $M$, the estimates are correlated because they use common prefixes within each repetition.</p>
+<h3>8. Reconstructing the full field</h3>
+<p>The representation $U^{(N)}(z)=\mathbb E_z[g_N(X_{\tau_N})]$ holds at every continuation node. We therefore launch $M$ walks from each node to obtain a grid-valued estimator $\widehat U^{(N)}_M(z)$.</p>
+<p>Absorbing-node values are copied directly from the boundary data, not estimated by Monte Carlo.</p>
+<p>The total number of walkers is $K_NM$. For a fixed geometry, total expected movement work scales as $O(MN^4)$, since $K_N=O(N^2)$ and the mean absorption time is $O(N^2)$. Keeping all walkers at once uses memory of order $K_NM$; batching would reduce peak memory. This example deliberately uses a moderate grid.</p>
+<p>At an individual node, the statistical standard error is at most $1/\sqrt M$, about 0.0224 for $M=2000$. This is <strong>not a bound on the observed nodewise error</strong>, and the maximum over many nodes can be substantially larger. To identify geometric bias directly, the accompanying experiments also compute the complete deterministic discrete field.</p>
+<h4>Reading the field comparison</h4>
+<p>The scatter plot against radius should cluster around the exact radial profile. The finite Cartesian grid does not possess full rotational symmetry, so the discrete values need not be exactly radial; sampling adds further scatter. Absorbing nodes have prescribed values 4 or 6 and appear as horizontal bands at radii slightly displaced from the true circles.</p>
+<p>The maps separate three signed quantities:
+$$\widehat U^{(N)}_M-u=(\widehat U^{(N)}_M-U^{(N)})+(U^{(N)}-u).$$
+The discretization map directly reveals the deterministic geometric contribution. The sampling map shows what remains after subtracting that discrete field. At absorbing nodes, sampling error is exactly zero because the value is assigned rather than simulated.</p>
+<p>The printed spatial RMSE is an average over <strong>nodes in one field realization</strong>. It differs from the expectation-based Monte Carlo RMSE at a fixed node. Unbiased sampling makes the spatial average of the cross term vanish in expectation, but it need not vanish for one realized field. All printed spatial metrics use continuation nodes only; the maps also display the absorbing layer inside the annulus.</p>
+<p>Structured total error near the circles is consistent with boundary bias. A large isolated error alone does not establish its source; the separate maps and metrics provide the appropriate comparison.</p>
+      </div>
     </section>
   </main>
   <footer><p>Laboratorio de Chiqui Tapia · A numerical probability experiment</p></footer>
