@@ -7,9 +7,12 @@
   const Sim = window.AnnulusSimulation;
 
   const showError = (msg) => { errorEl.textContent = msg; errorEl.hidden = false; };
-  if (!Sim || !window.Plotly) {
+  const missing = [];
+  if (!Sim) missing.push('simulation.js (is it uploaded next to index.html, with that exact name?)');
+  if (!window.Plotly) missing.push('Plotly (blocked or missing <script> tag for the CDN)');
+  if (missing.length) {
     statusEl.textContent = 'Initialization failed.';
-    showError('Could not load simulation.js or Plotly. Check the <script> tags in index.html and your connection (Plotly comes from a CDN).');
+    showError('Missing: ' + missing.join(' and ') + '.');
     return;
   }
   statusEl.textContent = 'Ready. Choose parameters and press Simulate.';
@@ -17,6 +20,9 @@
 
   let controller = null;
   const config = { responsive: true, displaylogo: false, scrollZoom: true };
+  let lastResult = null;
+  const root = document.documentElement;
+  const cssVar = (name) => getComputedStyle(root).getPropertyValue(name).trim();
 
   function setBusy(busy) {
     runBtn.disabled = busy;
@@ -47,12 +53,15 @@
 
   function draw(res) {
     const { z, se, xs, a, b } = res;
+    const dark = root.getAttribute('data-theme') === 'dark';
+    const ink = cssVar('--ink'), grid = cssVar('--line'), clear = 'rgba(0,0,0,0)';
+    const axis = { color: ink, gridcolor: grid, zerolinecolor: grid, linecolor: grid };
     const zRows = rowsOf(res, (p) => (Number.isNaN(z[p]) ? null : z[p]));
     const common = { cmin: res.zmin, cmax: res.zmax, colorscale: 'Viridis' };
 
     const ringA = ring(a, res.f), ringB = ring(b, res.g);
-    const lineA = { type: 'scatter3d', mode: 'lines', x: ringA.x, y: ringA.y, z: ringA.z, name: 'f on r = a', line: { color: '#d35400', width: 6 }, hoverinfo: 'skip' };
-    const lineB = { type: 'scatter3d', mode: 'lines', x: ringB.x, y: ringB.y, z: ringB.z, name: 'g on r = b', line: { color: '#172e35', width: 6 }, hoverinfo: 'skip' };
+    const lineA = { type: 'scatter3d', mode: 'lines', x: ringA.x, y: ringA.y, z: ringA.z, name: 'f on r = a', line: { color: dark ? '#ff9a4d' : '#d35400', width: 6 }, hoverinfo: 'skip' };
+    const lineB = { type: 'scatter3d', mode: 'lines', x: ringB.x, y: ringB.y, z: ringB.z, name: 'g on r = b', line: { color: ink, width: 6 }, hoverinfo: 'skip' };
 
     const surface = {
       type: 'surface', x: Array.from(xs), y: Array.from(xs), z: zRows, ...common,
@@ -64,9 +73,11 @@
     clearPlaceholder(el3d);
     Plotly.react(el3d, [surface, lineA, lineB], {
       margin: { l: 0, r: 0, t: 10, b: 0 },
+      paper_bgcolor: clear, font: { color: ink },
       legend: { orientation: 'h', y: 0 },
       scene: {
-        xaxis: { title: { text: 'x' } }, yaxis: { title: { text: 'y' } }, zaxis: { title: { text: 'u' } },
+        bgcolor: clear,
+        xaxis: { ...axis, title: { text: 'x' } }, yaxis: { ...axis, title: { text: 'y' } }, zaxis: { ...axis, title: { text: 'u' } },
         aspectmode: 'manual', aspectratio: { x: 1, y: 1, z: 0.7 }, dragmode: 'orbit',
       },
       uirevision: 'keep',
@@ -84,14 +95,15 @@
       colorscale: 'Viridis', zsmooth: false, text: hover, hovertemplate: '%{text}<extra></extra>',
       colorbar: { title: { text: 'u' }, thickness: 14 },
     };
-    const circle = (r) => ({ type: 'circle', xref: 'x', yref: 'y', x0: -r, y0: -r, x1: r, y1: r, line: { color: '#172e35', width: 1.5 } });
+    const circle = (r) => ({ type: 'circle', xref: 'x', yref: 'y', x0: -r, y0: -r, x1: r, y1: r, line: { color: ink, width: 1.5 } });
     const elHeat = $('heatmap-plot');
     clearPlaceholder(elHeat);
     const pad = b * 1.03;
     Plotly.react(elHeat, [heat], {
       margin: { l: 50, r: 10, t: 10, b: 45 },
-      xaxis: { title: { text: 'x' }, range: [-pad, pad], constrain: 'domain' },
-      yaxis: { title: { text: 'y' }, range: [-pad, pad], scaleanchor: 'x' },
+      paper_bgcolor: clear, plot_bgcolor: clear, font: { color: ink },
+      xaxis: { ...axis, title: { text: 'x' }, range: [-pad, pad], constrain: 'domain' },
+      yaxis: { ...axis, title: { text: 'y' }, range: [-pad, pad], scaleanchor: 'x' },
       shapes: [circle(a), circle(b)],
     }, config);
   }
@@ -126,6 +138,7 @@
         onProgress: (p) => { bar.value = p * 100; statusEl.textContent = `Simulating… ${Math.round(p * 100)}%`; },
       });
       draw(res);
+      lastResult = res;
       showSummary(res);
       statusEl.textContent = `Done. u ranges from ${res.zmin.toFixed(3)} to ${res.zmax.toFixed(3)}; ` +
         `mean standard error ${res.meanSE.toFixed(4)}.`;
@@ -139,4 +152,5 @@
   });
 
   cancelBtn.addEventListener('click', () => { if (controller) controller.abort(); });
+  document.addEventListener('themechange', () => { if (lastResult) draw(lastResult); });
 })();

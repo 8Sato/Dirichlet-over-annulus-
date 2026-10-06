@@ -5,6 +5,17 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="description" content="Explore the Dirichlet problem on an annulus using Monte Carlo random walks.">
   <title>Laboratorio de Chiqui Tapia — Monte Carlo &amp; Laplace's equation</title>
+  <!-- Tema: se fija antes de pintar para evitar el parpadeo. -->
+  <script>
+    (function () {
+      var t = null;
+      try { t = localStorage.getItem('theme'); } catch (e) {}
+      if (t !== 'light' && t !== 'dark') {
+        t = window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+      }
+      document.documentElement.setAttribute('data-theme', t);
+    })();
+  </script>
   <link rel="stylesheet" href="./styles.css">
   <!-- Fórmulas: MathJax (delimitadores $...$ y $$...$$) -->
   <script>
@@ -21,6 +32,7 @@
 </head>
 <body>
   <header class="site-header">
+    <button id="theme-toggle" class="theme-toggle" type="button" aria-pressed="false">☾ Dark mode</button>
     <p class="eyebrow">Probability meets partial differential equations</p>
     <h1>Laboratorio de Chiqui Tapia</h1>
     <p>Approximate a harmonic function with random walks. Choose an annulus,
@@ -344,5 +356,23 @@ The discretization map directly reveals the deterministic geometric contribution
     </section>
   </main>
   <footer><p>Laboratorio de Chiqui Tapia · A numerical probability experiment</p></footer>
+  <script>
+    (function () {
+      var btn = document.getElementById('theme-toggle'), root = document.documentElement;
+      function label() {
+        var dark = root.getAttribute('data-theme') === 'dark';
+        btn.textContent = dark ? '☀ Light mode' : '☾ Dark mode';
+        btn.setAttribute('aria-pressed', String(dark));
+      }
+      btn.addEventListener('click', function () {
+        var next = root.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+        root.setAttribute('data-theme', next);
+        try { localStorage.setItem('theme', next); } catch (e) {}
+        label();
+        document.dispatchEvent(new Event('themechange'));
+      });
+      label();
+    })();
+  </script>
 </body>
 </html>
