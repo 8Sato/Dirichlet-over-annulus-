@@ -5,8 +5,10 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="description" content="Explore the Dirichlet problem on an annulus using Monte Carlo random walks.">
   <title>Annulus Lab — Monte Carlo &amp; Laplace's equation</title>
-  <!-- These two files will be added in the next steps. -->
   <link rel="stylesheet" href="./styles.css">
+  <!-- Orden importante: Plotly, luego simulation.js, luego app.js. -->
+  <script src="https://cdn.plot.ly/plotly-2.35.2.min.js" defer></script>
+  <script src="./simulation.js" defer></script>
   <script src="./app.js" defer></script>
 </head>
 <body>
@@ -36,7 +38,8 @@
           <legend>Boundary conditions</legend>
           <p id="function-help">Use theta for the angle in radians. For example:
             <code>4 + cos(theta)</code> or <code>6 + sin(2 * theta)</code>.
-            Choose continuous functions with matching values at 0 and 2π.</p>
+            Write products with <code>*</code>. Choose continuous functions
+            with matching values at 0 and 2π.</p>
           <label for="inner-function">Inner boundary, f(theta)</label>
           <input id="inner-function" name="innerFunction" type="text"
             value="4 + cos(theta)" required spellcheck="false"
@@ -51,12 +54,12 @@
           <legend>Numerical resolution</legend>
           <label for="grid-size">Grid subdivisions per axis, N</label>
           <input id="grid-size" name="N" type="number" value="36"
-            min="4" step="1" required aria-describedby="grid-help">
+            min="4" max="300" step="1" required aria-describedby="grid-help">
           <p id="grid-help">The square [−R, R]² has grid spacing h = 2R / N.
             Increasing N refines the spatial grid.</p>
           <label for="walk-count">Random walks per interior node, M</label>
           <input id="walk-count" name="M" type="number" value="1000"
-            min="2" step="1" required aria-describedby="walk-help">
+            min="2" max="1000000" step="1" required aria-describedby="walk-help">
           <p id="walk-help">Increasing M reduces sampling noise.
             More grid points and more walks both increase computation time.</p>
           <label for="random-seed">Random seed</label>
@@ -64,13 +67,12 @@
             min="0" max="4294967295" step="1" required>
         </fieldset>
 
-        <!-- app.js will enable simulation after successful initialization. -->
+        <!-- app.js habilita Simulate cuando todo cargó correctamente. -->
         <div class="actions">
           <button id="simulate-button" type="submit" disabled>Simulate</button>
           <button id="cancel-button" type="button" disabled>Cancel</button>
         </div>
-        <p id="status" role="status" aria-live="polite">Interface ready.
-          The simulation engine has not been connected yet.</p>
+        <p id="status" role="status" aria-live="polite">Loading…</p>
         <label for="simulation-progress">Simulation progress</label>
         <progress id="simulation-progress" value="0" max="100">0%</progress>
         <p id="error-message" role="alert" hidden></p>
@@ -86,7 +88,7 @@
         <div id="solution-plot" aria-label="Interactive three-dimensional solution plot">
           <p>The 3D solution plot will appear here after a simulation.</p>
         </div>
-        <figcaption>3D view · Drag to rotate once the plot is available.</figcaption>
+        <figcaption>3D view · Drag to rotate, scroll to zoom.</figcaption>
       </figure>
       <figure>
         <div id="heatmap-plot" aria-label="Top view of the approximate solution">
@@ -98,6 +100,7 @@
         <dt>Grid spacing</dt><dd id="result-spacing">—</dd>
         <dt>Simulated nodes</dt><dd id="result-nodes">—</dd>
         <dt>Walks per node</dt><dd id="result-walks">—</dd>
+        <dt>Std. error (mean / max)</dt><dd id="result-se">—</dd>
         <dt>Elapsed time</dt><dd id="result-time">—</dd>
       </dl>
     </section>
