@@ -234,9 +234,9 @@
 </tr>
 </tbody>
 </table>
-<p>We use $D$ for the physical domain and $\mathcal W_N$ for the sample space of trajectories. All resolutions in the experiments are multiples of 6, so $z_N=(2,0)$ exactly in the mathematical grid.</p>
+<p>We use $D$ for the physical domain and $\mathcal W_N$ for the sample space of trajectories.</p>
 <h3>2. Discretization of the problem</h3>
-<p>Fix $h=6/N$ and $(x_i,y_j)=(-3+ih,-3+jh)$ for $0\le i,j\le N$. If $u$ has bounded fourth derivatives in a neighborhood of the stencil, Taylor's theorem gives
+<p>Fix $h=2R/N$ and $(x_i,y_j)=(-R+ih,-R+jh)$ for $0\le i,j\le N$. If $u$ has bounded fourth derivatives in a neighborhood of the stencil, Taylor's theorem gives
 $$u(x\pm h,y)=u\pm hu_x+\frac{h^2}{2}u_{xx}\pm\frac{h^3}{6}u_{xxx}+O(h^4).$$
 Adding the two expansions cancels the odd terms. Doing the same in $y$ yields
 $$\Delta_h u(z):=\frac{\sum_{w\sim z}u(w)-4u(z)}{h^2}
@@ -245,16 +245,15 @@ where $w\sim z$ denotes one of the four nearest neighbors. Therefore $\Delta_h U
 $$U(z)=\frac14\sum_{w\sim z}U(w).$$
 This is a discrete analogue of the mean-value property of harmonic functions.</p>
 <h4>The boundary used by the algorithm</h4>
-<p>Let $G_N$ be the grid in $[-3,3]^2$. Define
+<p>Let $G_N$ be the grid in $[-R,R]^2$. Define
 $$I_N=\{z\in G_N\cap D:z\pm he_1,z\pm he_2\in D\}.$$
 Let $B_N$ contain all neighbors of $I_N$ that are not in $I_N$. A walk stops as soon as it reaches $B_N$. The implementation also labels other grid nodes for convenience, but unreachable labels do not affect a walk started in $I_N$.</p>
-<p>We prescribe $g_N=4$ or 6 on these absorbing nodes according to the nearest circle. Thus we approximate both the operator and the location where the boundary data are imposed. Second-order consistency of the interior stencil alone does not imply second-order global accuracy.</p>
 <h4>Linear system and uniqueness</h4>
 <p>Numbering the nodes in $I_N$ gives
 $$4U(z)-\sum_{w\sim z,\,w\in I_N}U(w)
 =\sum_{w\sim z,\,w\in B_N}g_N(w),\qquad A\mathbf U=\mathbf b.$$
 The diagonal entries of $A$ are 4 and interior neighbor entries are $-1$. Each row has at most five nonzero entries. The number of unknowns satisfies
-$$|I_N|\sim\frac{|D|}{h^2}=\frac{8\pi}{h^2}=\frac{2\pi}{9}N^2.$$</p>
+$$|I_N|\sim\frac{|D|}{h^2}=\frac{pi(R^2-r^2)}{R^2}N^2.$$</p>
 <p>To prove uniqueness, take a solution of the homogeneous system with zero boundary data. A positive interior maximum, being equal to the average of its neighbors, forces every neighbor to have the same maximum. Propagating along a path to the boundary gives a contradiction. Applying the argument to the negative rules out a negative minimum. Thus the nullspace is trivial and $A$ is invertible. This argument requires every interior component to reach the boundary, which holds for our finite grid.</p>
 <h3>3. Probabilistic representation</h3>
 <p>Consider the path space $\mathcal W_N=(I_N\cup B_N)^{\mathbb N_0}$, in each $I_N\cup B_N$ we consider the sigma algebra $\mathscr P (I_N\cup B_N)$ and $ \mathcal W_N$ is equipped with its product sigma-algebra. Under $\mathbb P_z$, the coordinate process $X_n(\omega)=\omega_n$ starts at <strong>$X_0=z$</strong>, moves to each of its four neighbors with probability $1/4$ in $I_N$, and stays fixed once it reaches $B_N$. Define
